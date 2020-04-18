@@ -14,7 +14,17 @@ app = Flask(__name__)
 def static_content(content):
     return render_template(content)
 
-
+@app.route('/esprimo/<numero>')#parametro por defecto es string
+def es_primo(numero):
+    numero = int(numero)
+    if numero > 1:
+        for i in range(2,numero):
+            if (numero % i) == 0:
+                return "No es un numero primo"        
+            else:
+                return "Si es un numero primo"
+    else:
+        return "No es un numero primo"
 
 
 if __name__ == '__main__':
