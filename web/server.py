@@ -42,6 +42,33 @@ def es_palidromo(palabra):
             return "No es palindrome"
     return "Es palindrome"
 
+@app.route('/create_user/<nombre>/<apellido>/<passwords>/<usernames>')
+def create_user(nombre, apellido, passwords, usernames):
+    user = entities.User(
+        name = nombre,
+        fullname = apellido,
+        password = passwords,
+        username = usernames
+    )
+
+    db_session = db.getSession(engine)
+    db_session.add(user)
+    db_session.commit()
+
+    return "User created!"
+
+@app.route('/read_users')
+def read_users():
+    db_session = db.getSession(engine)
+    respuesta = db_session.query(entities.User)
+    users = respuesta[:]
+    retornar = ""
+    cont = 0
+    for user in users:
+        retornar += "<b>Usuario</b>: " + str(cont+1) + "<br>Nombre: " + str(user.name) + "<br>Apellido: " + str(user.fullname) + "<br>Contraseña: " + str(user.password) + "<br>Usuario: " + str(user.username) + "<br>********************************************************************************************************************<br>"
+        cont += 1
+    return retornar
+
 if __name__ == '__main__':
     app.secret_key = ".."
     app.run(port=8080, threaded=True, host=('127.0.0.1'))
