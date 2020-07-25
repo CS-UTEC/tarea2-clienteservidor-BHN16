@@ -9,7 +9,7 @@ class Manager:
     session = None
 
     def createEngine(self):
-        engine = create_engine('sqlite:///chat.db?check_same_thread=False', echo=False)
+        engine = create_engine('postgres+psycopg2://postgres:admin@localhost:5432/meowtec', echo=False)
         self.Base.metadata.create_all(engine)
         return engine
 
@@ -17,8 +17,10 @@ class Manager:
         if self.session == None:
             Session = sessionmaker(bind=engine)
             session = Session()
-
         return session
+
+    def destroyTables(self, engine):
+        self.Base.metadata.drop_all(engine)
 
 
 class AlchemyEncoder(json.JSONEncoder):

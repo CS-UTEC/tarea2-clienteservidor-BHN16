@@ -1,8 +1,9 @@
-from flask import Flask,render_template, request, session, Response, redirect
+from flask import Flask,render_template, request, session, Response, redirect, jsonify
 from database import connector
 from model import entities
 import json
 import time
+import os
 
 db = connector.Manager()
 engine = db.createEngine()
@@ -10,53 +11,100 @@ engine = db.createEngine()
 app = Flask(__name__)
 
 
-@app.route('/static/<content>')
-def static_content(content):
-    return render_template(content)
-
-@app.route('/esprimo/<numero>')
-def es_primo(numero):
-    numero = int(numero)
-    if numero > 1:
-        for i in range(2,numero):
-            if (numero % i) == 0:
-                return "No es un numero primo"        
-            else:
-                return "Si es un numero primo"
-    else:
-        return "No es un numero primo"
-
-@app.route('/multiplo/<numero1>/<numero2>')
-def multiplo(numero1, numero2):
-    num1 = int(numero1)
-    num2 = int(numero2)
-    if(num1%num2 == 0):
-        return "Si es múltiplo"
-    else:
-        return "No es múltiplo"
-
-@app.route('/palindrome/<palabra>')
-def es_palidromo(palabra):
-    for i in range(0,int(len(palabra)/2)):
-        if palabra[i] != palabra[len(palabra)-1-i]:
-            return "No es palindrome"
-    return "Es palindrome"
-
-@app.route('/create_user/<nombre>/<apellido>/<passwords>/<usernames>')
-def create_user(nombre, apellido, passwords, usernames):
-    user = entities.User(
-        name = nombre,
-        fullname = apellido,
-        password = passwords,
-        username = usernames
+@app.route('/albergue', methods = ['POST'])
+def create_albergue():
+    create = json.loads(request.data)
+    session = db.getSession(engine)
+    usuario = entities.Usuario(
+        nombre = create["admin"]["nombre"],
+        apellidos = create["admin"]["apellidos"],
+        representante = create["admin"]["representante"],
+        celular = create["admin"]["celular"],
+        correo = create["admin"]["correo"]
     )
+    session.add(usuario)
+    session.flush()
+    albergue = entities.Albergue(
+        admin_id = usuario.id,
+        nombre = create["albergue"]["nombre"],
+        anios = create["albergue"]["anios"],
+        direccion = create["albergue"]["direccion"],
+        urbanizacion = create["albergue"]["urbanizacion"],
+        distrito = create["albergue"]["distrito"],
+        ciudad = create["albergue"]["ciudad"],
+        departamento = create["albergue"]["departamento"],
+        tamanio = create["albergue"]["tamanio"],
+        material = create["albergue"]["material"],
+        gasto = create["albergue"]["gasto"],
+        pertenencia = create["albergue"]["pertenencia"],
+        voluntarios = create["albergue"]["voluntarios"],
+        albergan = create["albergue"]["albergan"],
+        num_gatos = create["albergue"]["num_gatos"],
+        acep_donaciones = create["albergue"]["acep_donaciones"],
+        acep_apoyo = create["albergue"]["acep_apoyo"],
+        banco_name = create["albergue"]["banco_name"],
+        banco_number = create["albergue"]["banco_number"],
+        banco_cci = create["albergue"]["banco_cci"],
+        facebook = create["albergue"]["facebook"],
+        instagram = create["albergue"]["instagram"],
+        correo = create["albergue"]["correo"],
+        otro_contacto = create["albergue"]["otro_contacto"]
+    )
+    session.add(albergue)
+    session.flush()
+    for i in range(6):
+        nombre = "gato" + str(i)
+        if(create[nombre]["nombre"] != ""):
+            gato = entities.Gato(
+                albergue_id = albergue.id,
+                nombre = create[nombre]["nombre"],
+                img = create[nombre]["img"], #nombre de la imagen 
+                edad = create[nombre]["edad"],
+                adopcion = create[nombre]["adopcion"]
+            )
+            session.add(gato)
+            session.flush()
+            temp = gato.id
+            path = os.getcwd()
+            os.mkdir(path+"/gatos_imgs/"+str(gato.id))
+            #TODO: guardar la imagen en el directorio creado
+            session.commit()
+            actualizar = session.query(entities.Gato).filter(entities.Gato.id == temp).first()
+            setattr(actualizar, 'img', "cambiorealizado")
+            session.commit()
+    session.close()
+    return "finalizado la inserción de datos :)"
 
+@app.route('/get_gatos/<id>', methods = ['GET'])
+def search_gatos(id):
+    _id = int(id)
     db_session = db.getSession(engine)
-    db_session.add(user)
-    db_session.commit()
+    gatos_from_id = db_session.query(entities.Gato).filter(entities.Gato.albergue_id == _id)
+    db_session.close()
+    gatos = gatos_from_id[:]
+    for gato in gatos:
+        print(gato.id)
+    msg = {'gatos':gatos}
+    return Response(json.dumps(msg, cls=connector.AlchemyEncoder), mimetype='application/json')
 
-    return "User created!"
+@app.route('/borrar')
+def borrar():
+    db.destroyTables(engine)
 
+@app.route('/delete_gato/<id>', methods=['DELETE'])
+def delete_gato(id):
+    _id = int(id)
+    session = db.getSession(engine)
+    msg = session.query(entities.Gato).filter(entities.Gato.id == _id).one()
+    session.delete(msg)
+    session.commit()
+    session.close()
+    return "Gato borrado"
+    #crear gato, creo un file con el nombre de la carpeta 
+
+
+
+'''
 @app.route('/read_users')
 def read_users():
     db_session = db.getSession(engine)
@@ -68,6 +116,7 @@ def read_users():
         retornar += "<b>Usuario</b>: " + str(cont+1) + "<br>Nombre: " + str(user.name) + "<br>Apellido: " + str(user.fullname) + "<br>Contraseña: " + str(user.password) + "<br>Usuario: " + str(user.username) + "<br>********************************************************************************************************************<br>"
         cont += 1
     return retornar
+'''
 
 if __name__ == '__main__':
     app.secret_key = ".."
